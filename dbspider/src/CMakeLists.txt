@@ -4,7 +4,15 @@ set(CMAKE_CXX_FLAGS "$ENV{CXXFLAGS} -rdynamic  -std=c++20  -Wall -Werror -Wno-de
 
 set(LIB_SRC
     base/thread.cc
+    base/util.cc
+    base/log.cc
+    base/config.cc
+    base/fiber.cc
+    base/scheduler.cc
+    base/timer.cc
+    base/io_manager.cc
 
+    # base/hook.cc
     sync/mutex.cc
 )
 

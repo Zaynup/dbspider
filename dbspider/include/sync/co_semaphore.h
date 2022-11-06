@@ -3,9 +3,43 @@
 
 namespace dbspider
 {
-    /**
-     * @brief 协程信号量
-     */
+    class Semaphore : Noncopyable
+    {
+    public:
+        Semaphore(uint32_t count)
+        {
+            if (sem_init(&m_sem, 0, count))
+            {
+                throw std::logic_error("sem_init error");
+            }
+        }
+
+        ~Semaphore()
+        {
+            sem_destroy(&m_sem);
+        }
+
+        void wait()
+        {
+            if (sem_wait(&m_sem))
+            {
+                throw std::logic_error("sem_wait error");
+            }
+        }
+
+        void notify()
+        {
+            if (sem_post(&m_sem))
+            {
+                throw std::logic_error("sem_notify error");
+            }
+        }
+
+    private:
+        sem_t m_sem;
+    };
+
+    // 协程信号量
     class CoSemaphore : Noncopyable
     {
     public:
@@ -42,41 +76,5 @@ namespace dbspider
         uint32_t m_used;     // 已经获取的信号量的数量
         CoCondvar m_condvar; // 协程条件变量
         CoMutex m_mutex;     // 协程锁
-    };
-
-    class Semaphore : Noncopyable
-    {
-    public:
-        Semaphore(uint32_t count)
-        {
-            if (sem_init(&m_sem, 0, count))
-            {
-                throw std::logic_error("sem_init error");
-            }
-        }
-
-        ~Semaphore()
-        {
-            sem_destroy(&m_sem);
-        }
-
-        void wait()
-        {
-            if (sem_wait(&m_sem))
-            {
-                throw std::logic_error("sem_wait error");
-            }
-        }
-
-        void notify()
-        {
-            if (sem_post(&m_sem))
-            {
-                throw std::logic_error("sem_notify error");
-            }
-        }
-
-    private:
-        sem_t m_sem;
     };
 }

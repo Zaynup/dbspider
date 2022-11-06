@@ -1,5 +1,5 @@
 # 设置cmake的最低版本和项目名称
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.16)
 project(dbspider)
 
 # 生成debug版本，可以进行gdb调试
@@ -18,6 +18,7 @@ include(cmake/utils.cmake)
 add_definitions(-Wno-builtin-macro-redefined)
 
 # 设置项目编译头文件搜索路径 -I
+include_directories(${PROJECT_SOURCE_DIR}/dbspider)
 include_directories(${PROJECT_SOURCE_DIR}/dbspider/include)
 include_directories(${PROJECT_SOURCE_DIR}/dbspider/include/base)
 include_directories(${PROJECT_SOURCE_DIR}/dbspider/include/sync)
