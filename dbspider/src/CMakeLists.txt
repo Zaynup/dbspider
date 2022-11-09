@@ -14,6 +14,7 @@ set(LIB_SRC
     base/fd_manager.cc
     base/hook.cc
     base/lexical_cast.cc
+    base/bytearray.cc
 
     sync/mutex.cc
     sync/co_condvar.cc
