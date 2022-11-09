@@ -1,6 +1,3 @@
-//
-// Created by zavier on 2021/12/4.
-//
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <stdarg.h>
@@ -12,9 +9,9 @@
 #include <unistd.h>
 #include "config.h"
 #include "fiber.h"
-// #include "fd_manager.h"
+#include "fd_manager.h"
 #include "hook.h"
-// #include "io_manager.h"
+#include "io_manager.h"
 #include "log.h"
 
 static dbspider::Logger::ptr g_logger = DBSPIDER_LOG_NAME("system");

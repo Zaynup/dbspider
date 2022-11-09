@@ -8,17 +8,22 @@ namespace dbspider
     class Fiber;
     class Timer;
 
-    class CoCondvar : Noncopyable
+    // 协程条件变量
+    class CoCondVar : Noncopyable
     {
     public:
         using MutexType = SpinLock;
 
+        // 唤醒一个等待的协程
         void notify();
 
+        // 唤醒全部等待的协程
         void notifyAll();
 
+        // 不加锁地等待唤醒
         void wait();
 
+        // 等待唤醒
         void wait(CoMutex::Lock &lock);
 
     private:

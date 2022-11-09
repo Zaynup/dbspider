@@ -74,7 +74,7 @@ namespace dbspider
     private:
         uint32_t m_num;      // 信号量的数量
         uint32_t m_used;     // 已经获取的信号量的数量
-        CoCondvar m_condvar; // 协程条件变量
+        CoCondVar m_condvar; // 协程条件变量
         CoMutex m_mutex;     // 协程锁
     };
 }

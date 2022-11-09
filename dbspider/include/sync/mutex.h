@@ -6,7 +6,7 @@
 #include <memory>
 #include <queue>
 
-#include "../base/noncopyable.h"
+#include "noncopyable.h"
 
 namespace dbspider
 {

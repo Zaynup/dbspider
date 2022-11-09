@@ -2,7 +2,7 @@
 
 #include <algorithm>
 #include <signal.h>
-// #include "hook.h"
+#include "hook.h"
 #include "scheduler.h"
 #include "macro.h"
 #include "log.h"
@@ -83,7 +83,7 @@ namespace dbspider
         setThis();
         dbspider::Fiber::EnableFiber();
 
-        // dbspider::set_hook_enable(true);
+        dbspider::set_hook_enable(true);
         Fiber::ptr cb_fiber;
         Fiber::ptr idle_fiber(new Fiber(std::bind(&Scheduler::wait, this)));
         ScheduleTask task;

@@ -3,10 +3,10 @@
 // #include "byte_array.h"
 #include "config.h"
 #include "fiber.h"
-// #include "fd_manager.h"
-// #include "hook.h"
+#include "fd_manager.h"
+#include "hook.h"
 
-// #include "io_manager.h"
+#include "io_manager.h"
 #include "log.h"
 #include "macro.h"
 

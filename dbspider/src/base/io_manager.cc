@@ -209,18 +209,115 @@ namespace dbspider
     // 删除事件
     bool IOManager::delEvent(int fd, Event event)
     {
+        RWMutexType::ReadLock lock(m_mutex);
+        if ((int)m_fdContexts.size() <= fd)
+        {
+            return false;
+        }
+        FdContext *fdContext = m_fdContexts[fd];
+        lock.unlock();
+
+        FdContext::MutexType::Lock lock1(fdContext->mutex);
+        if (!(fdContext->events & event))
+        {
+            return false;
+        }
+
+        Event newEvents = (Event)(fdContext->events & ~event);
+        int op = fdContext->events ? EPOLL_CTL_MOD : EPOLL_CTL_DEL;
+        epoll_event epevent;
+        memset(&epevent, 0, sizeof(epoll_event));
+        epevent.events = EPOLLET | newEvents;
+        epevent.data.ptr = fdContext;
+        int rt = epoll_ctl(m_epfd, op, fd, &epevent);
+        if (rt)
+        {
+            DBSPIDER_LOG_ERROR(g_logger) << "epoll_ctl(" << m_epfd << ", " << op << ", " << fd << ", "
+                                         << epevent.events << "):" << rt << " (" << errno << ") (" << strerror(errno) << ")";
+            return false;
+        }
+
+        m_pendingEventCount--;
+        fdContext->events = newEvents;
+        FdContext::EventContext &eventContext = fdContext->getContext(event);
+        fdContext->resetContext(eventContext);
+
         return true;
     }
 
     // 取消事件
     bool IOManager::cancelEvent(int fd, Event event)
     {
+        RWMutexType::ReadLock lock(m_mutex);
+        if ((int)m_fdContexts.size() <= fd)
+        {
+            return false;
+        }
+        FdContext *fdContext = m_fdContexts[fd];
+        lock.unlock();
+        FdContext::MutexType::Lock lock1(fdContext->mutex);
+        if (!(fdContext->events & event))
+        {
+            return false;
+        }
+        Event newEvents = (Event)(fdContext->events & ~event);
+        int op = fdContext->events ? EPOLL_CTL_MOD : EPOLL_CTL_DEL;
+        epoll_event epevent;
+        memset(&epevent, 0, sizeof(epoll_event));
+        epevent.events = EPOLLET | newEvents;
+        epevent.data.ptr = fdContext;
+        int rt = epoll_ctl(m_epfd, op, fd, &epevent);
+        if (rt)
+        {
+            DBSPIDER_LOG_ERROR(g_logger) << "epoll_ctl(" << m_epfd << ", " << op << ", " << fd << ", "
+                                         << epevent.events << "):" << rt << " (" << errno << ") (" << strerror(errno) << ")";
+            return false;
+        }
+        fdContext->triggerEvent(event);
+        m_pendingEventCount--;
         return true;
     }
 
     // 取消所有事件
     bool IOManager::cancelAllEvent(int fd)
     {
+        RWMutexType::ReadLock lock(m_mutex);
+        if ((int)m_fdContexts.size() <= fd)
+        {
+            return false;
+        }
+        FdContext *fdContext = m_fdContexts[fd];
+        lock.unlock();
+        FdContext::MutexType::Lock lock1(fdContext->mutex);
+        if (!(fdContext->events))
+        {
+            return false;
+        }
+        int op = EPOLL_CTL_DEL;
+        epoll_event epevent;
+        memset(&epevent, 0, sizeof(epoll_event));
+        epevent.events = 0;
+        epevent.data.ptr = fdContext;
+
+        int rt = epoll_ctl(m_epfd, op, fd, &epevent);
+        if (rt)
+        {
+            DBSPIDER_LOG_ERROR(g_logger) << "epoll_ctl(" << m_epfd << ", " << op << ", " << fd << ", "
+                                         << epevent.events << "):" << rt << " (" << errno << ") (" << strerror(errno) << ")";
+            return false;
+        }
+        if (fdContext->events & READ)
+        {
+            fdContext->triggerEvent(READ);
+            --m_pendingEventCount;
+        }
+        if (fdContext->events & WRITE)
+        {
+            fdContext->triggerEvent(WRITE);
+            --m_pendingEventCount;
+        }
+
+        DBSPIDER_ASSERT(fdContext->events == 0);
         return true;
     }
 
@@ -246,6 +343,103 @@ namespace dbspider
 
     void IOManager::wait()
     {
+        DBSPIDER_LOG_DEBUG(g_logger) << "wait for event";
+        const uint64_t MAX_EVNETS = 256;
+        epoll_event *events = new epoll_event[MAX_EVNETS]();
+        std::unique_ptr<epoll_event[]> uniquePtr(events);
+        while (true)
+        {
+            uint64_t next_timeout = 0;
+            if (stopping(next_timeout))
+            {
+                DBSPIDER_LOG_INFO(g_logger) << "name=" << getName()
+                                            << " idle stopping exit";
+                return;
+            }
+            int rt = 0;
+            do
+            {
+                static const int MAX_TIMEOUT = 3000;
+                if (next_timeout != ~0ull)
+                {
+                    next_timeout = std::min((int)next_timeout, MAX_TIMEOUT);
+                }
+                else
+                {
+                    next_timeout = MAX_TIMEOUT;
+                }
+                rt = epoll_wait(m_epfd, events, MAX_EVNETS, (int)next_timeout);
+                if (rt < 0 && errno == EINTR)
+                {
+                    continue;
+                }
+                else
+                {
+                    break;
+                }
+            } while (true);
+
+            std::vector<std::function<void()>> cbs;
+            getExpiredCallbacks(cbs);
+            if (cbs.size())
+            {
+                submit(cbs.begin(), cbs.end());
+            }
+
+            for (int i = 0; i < rt; ++i)
+            {
+                epoll_event &event = events[i];
+                if (event.data.fd == m_tickleFds[0])
+                {
+                    uint8_t dummy[256];
+                    while (read(m_tickleFds[0], dummy, sizeof(dummy)) > 0)
+                        ;
+                    continue;
+                }
+                FdContext *fdContext = static_cast<FdContext *>(event.data.ptr);
+                FdContext::MutexType::Lock lock(fdContext->mutex);
+
+                if (event.events & (EPOLLERR | EPOLLHUP))
+                {
+                    event.events |= ((EPOLLIN | EPOLLOUT) & fdContext->events);
+                }
+                int real_events = NONE;
+                if (event.events & EPOLLIN)
+                {
+                    real_events |= READ;
+                }
+                if (event.events & EPOLLOUT)
+                {
+                    real_events |= WRITE;
+                }
+                if ((real_events & fdContext->events) == NONE)
+                {
+                    continue;
+                }
+                int left_events = fdContext->events & ~real_events;
+                int op = left_events ? EPOLL_CTL_MOD : EPOLL_CTL_DEL;
+                event.events = left_events | EPOLLET;
+                int res = epoll_ctl(m_epfd, op, fdContext->fd, &event);
+                if (res)
+                {
+                    DBSPIDER_LOG_ERROR(g_logger) << "epoll_ctl(" << m_epfd << ", " << op << ", " << fdContext->fd << ", "
+                                                 << event.events << "):" << res << " (" << errno << ") (" << strerror(errno) << ")";
+                    continue;
+                }
+                if (real_events & READ)
+                {
+                    fdContext->triggerEvent(READ);
+                    --m_pendingEventCount;
+                }
+                if (real_events & WRITE)
+                {
+                    fdContext->triggerEvent(WRITE);
+                    --m_pendingEventCount;
+                }
+            }
+
+            Fiber::YieldToHold();
+        }
     }
 
     bool IOManager::stopping()
