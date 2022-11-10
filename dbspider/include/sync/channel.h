@@ -5,6 +5,7 @@
 
 namespace dbspider
 {
+    // Channel 的具体实现
     template <typename T>
     class ChannelImpl : Noncopyable
     {
@@ -15,22 +16,19 @@ namespace dbspider
         {
         }
 
-        ~ChannelImpl()
-        {
-            close();
-        }
+        ~ChannelImpl() { close(); }
 
-        // 发送数据到Channel
-        bool push(T &t)
+        // 发送数据到 Channel
+        bool push(const T &t)
         {
             CoMutex::Lock lock(m_mutex);
             if (m_isClose)
             {
                 return false;
             }
+            // 如果缓冲区已满，等待m_pushCv唤醒
             while (m_queue.size() >= m_capacity)
             {
-                // 如果缓冲区已满，等待m_pushCv唤醒
                 m_pushCv.wait(lock);
                 if (m_isClose)
                 {
@@ -38,12 +36,12 @@ namespace dbspider
                 }
             }
             m_queue.push(t);
-
             // 唤醒 m_popCv
             m_popCv.notify();
             return true;
         }
 
+        // 从 Channel 读取数据
         bool pop(T &t)
         {
             CoMutex::Lock lock(m_mutex);
@@ -62,7 +60,6 @@ namespace dbspider
             }
             t = m_queue.front();
             m_queue.pop();
-
             // 唤醒 m_pushCv
             m_pushCv.notify();
             return true;
@@ -89,11 +86,9 @@ namespace dbspider
                 return;
             }
             m_isClose = true;
-
             // 唤醒等待的协程
             m_pushCv.notify();
             m_popCv.notify();
-
             std::queue<T> q;
             std::swap(m_queue, q);
         }
@@ -111,7 +106,7 @@ namespace dbspider
         bool empty() { return !size(); }
 
     private:
-        bool m_isClose; // 是否关闭
+        bool m_isClose;
 
         size_t m_capacity;     // Channel 缓冲区大小
         CoMutex m_mutex;       // 协程锁和协程条件变量配合使用保护消息队列
@@ -129,15 +124,11 @@ namespace dbspider
     class Channel
     {
     public:
-        Channel(size_t capacity)
-        {
-            m_channel = std::make_shared<ChannelImpl<T>>(capacity);
-        }
-
-        Channel(const Channel &chan) { m_channel = chan; }
+        Channel(size_t capacity) { m_channel = std::make_shared<ChannelImpl<T>>(capacity); }
+        Channel(const Channel &chan) { m_channel = chan.m_channel; }
 
         bool push(const T &t) { return m_channel->push(t); }
-        bool pop(T &t) { return m_channel->pop(); }
+        bool pop(T &t) { return m_channel->pop(t); }
         void close() { m_channel->close(); }
 
         size_t capacity() const { return m_channel->capacity(); }
@@ -162,4 +153,5 @@ namespace dbspider
     private:
         std::shared_ptr<ChannelImpl<T>> m_channel;
     };
+
 }

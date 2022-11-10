@@ -24,6 +24,12 @@ set(LIB_SRC
     net/socket_stream.cc
     net/socket.cc
     net/tcp_server.cc
+
+    rpc/rpc_client.cc
+    rpc/rpc_server.cc
+    rpc/rpc_service_register.cc
+    rpc/rpc_connection_pool.cc
+    rpc/rpc_session.cc
 )
 
 set(LIB_LIB pthread yaml-cpp dl)

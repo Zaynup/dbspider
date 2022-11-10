@@ -78,10 +78,12 @@ namespace dbspider
         TcpServer::ptr self = shared_from_this();
         for (auto &sock : m_listens)
         {
-            m_acceptWorker->submit([self, sock]
-                                   {
-            //DBSPIDER_LOG_DEBUG(g_logger) << "acceptWorker->submit";
-            self->startAccept(sock); });
+            m_acceptWorker->submit(
+                [self, sock]
+                {
+                    DBSPIDER_LOG_DEBUG(g_logger) << "acceptWorker->submit";
+                    self->startAccept(sock);
+                });
         }
         DBSPIDER_LOG_DEBUG(g_logger) << "TcpServer::start()";
         // m_acceptWorker->addTimer(-1, []{}, true);
@@ -116,8 +118,11 @@ namespace dbspider
             if (client)
             {
                 client->setRecvTimeout(m_recvTimeout);
-                m_worker->submit([self, client]
-                                 { self->handleClient(client); });
+                m_worker->submit(
+                    [self, client]
+                    {
+                        self->handleClient(client);
+                    });
             }
             else
             {

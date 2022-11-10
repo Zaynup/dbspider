@@ -48,6 +48,7 @@ namespace dbspider
         uint64_t getRecvTimeout();
 
         bool getOption(int level, int option, void *result, size_t *len);
+
         template <class T>
         bool getOption(int level, int option, T *result)
         {
@@ -68,104 +69,28 @@ namespace dbspider
         bool listen(int backlog = SOMAXCONN);
         bool close();
 
-        /**
-         * @brief 发送数据
-         * @param[in] buffer 待发送数据的内存
-         * @param[in] length 待发送数据的长度
-         * @param[in] flags 标志字
-         * @return
-         *      @retval >0 发送成功对应大小的数据
-         *      @retval =0 socket被关闭
-         *      @retval <0 socket出错
-         */
+        // 发送数据
         virtual ssize_t send(const void *buffer, size_t length, int flags = 0);
 
-        /**
-         * @brief 发送数据
-         * @param[in] buffers 待发送数据的内存(iovec数组)
-         * @param[in] length 待发送数据的长度(iovec长度)
-         * @param[in] flags 标志字
-         * @return
-         *      @retval >0 发送成功对应大小的数据
-         *      @retval =0 socket被关闭
-         *      @retval <0 socket出错
-         */
+        // 发送数据
         virtual ssize_t send(const iovec *buffers, size_t length, int flags = 0);
 
-        /**
-         * @brief 发送数据
-         * @param[in] buffer 待发送数据的内存
-         * @param[in] length 待发送数据的长度
-         * @param[in] to 发送的目标地址
-         * @param[in] flags 标志字
-         * @return
-         *      @retval >0 发送成功对应大小的数据
-         *      @retval =0 socket被关闭
-         *      @retval <0 socket出错
-         */
+        // 发送数据
         virtual ssize_t sendTo(const void *buffer, size_t length, const Address::ptr to, int flags = 0);
 
-        /**
-         * @brief 发送数据
-         * @param[in] buffers 待发送数据的内存(iovec数组)
-         * @param[in] length 待发送数据的长度(iovec长度)
-         * @param[in] to 发送的目标地址
-         * @param[in] flags 标志字
-         * @return
-         *      @retval >0 发送成功对应大小的数据
-         *      @retval =0 socket被关闭
-         *      @retval <0 socket出错
-         */
+        // 发送数据
         virtual ssize_t sendTo(const iovec *buffers, size_t length, const Address::ptr to, int flags = 0);
 
-        /**
-         * @brief 接受数据
-         * @param[out] buffer 接收数据的内存
-         * @param[in] length 接收数据的内存大小
-         * @param[in] flags 标志字
-         * @return
-         *      @retval >0 接收到对应大小的数据
-         *      @retval =0 socket被关闭
-         *      @retval <0 socket出错
-         */
+        // 接受数据
         virtual ssize_t recv(void *buffer, size_t length, int flags = 0);
 
-        /**
-         * @brief 接受数据
-         * @param[out] buffers 接收数据的内存(iovec数组)
-         * @param[in] length 接收数据的内存大小(iovec数组长度)
-         * @param[in] flags 标志字
-         * @return
-         *      @retval >0 接收到对应大小的数据
-         *      @retval =0 socket被关闭
-         *      @retval <0 socket出错
-         */
+        // 接受数据
         virtual ssize_t recv(iovec *buffers, size_t length, int flags = 0);
 
-        /**
-         * @brief 接受数据
-         * @param[out] buffer 接收数据的内存
-         * @param[in] length 接收数据的内存大小
-         * @param[out] from 发送端地址
-         * @param[in] flags 标志字
-         * @return
-         *      @retval >0 接收到对应大小的数据
-         *      @retval =0 socket被关闭
-         *      @retval <0 socket出错
-         */
+        // 接受数据
         virtual ssize_t recvFrom(void *buffer, size_t length, Address::ptr from, int flags = 0);
 
-        /**
-         * @brief 接受数据
-         * @param[out] buffers 接收数据的内存(iovec数组)
-         * @param[in] length 接收数据的内存大小(iovec数组长度)
-         * @param[out] from 发送端地址
-         * @param[in] flags 标志字
-         * @return
-         *      @retval >0 接收到对应大小的数据
-         *      @retval =0 socket被关闭
-         *      @retval <0 socket出错
-         */
+        // 接受数据
         virtual ssize_t recvFrom(iovec *buffers, size_t length, Address::ptr from, int flags = 0);
 
         Address::ptr getRemoteAddress();
@@ -203,5 +128,4 @@ namespace dbspider
         Address::ptr m_remoteAddress;
         Address::ptr m_localAddress;
     };
-
 }

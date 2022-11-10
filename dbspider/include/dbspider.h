@@ -15,6 +15,7 @@
 #include "fiber.h"
 #include "hook.h"
 #include "timer.h"
+#include "time_measure.h"
 #include "scheduler.h"
 #include "io_manager.h"
 #include "fd_manager.h"
@@ -28,4 +29,8 @@
 #include "socket_stream.h"
 #include "tcp_server.h"
 
-// #include "time_measure.h"
+#include "rpc_client.h"
+#include "rpc_server.h"
+#include "rpc_service_registry.h"
+#include "rpc_connection_pool.h"
+#include "rpc_session.h"
