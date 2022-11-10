@@ -177,7 +177,7 @@ namespace dbspider
         cur->yield();
     }
 
-    // 让出协程，并设置协程状态为Hold
+    // 让出协程，并设置协程状态为READY
     void Fiber::YieldToReady()
     {
         Fiber::ptr cur = GetThis();

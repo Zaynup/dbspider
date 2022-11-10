@@ -101,6 +101,117 @@ namespace dbspider
         // 将ByteArray里面的数据[m_position, m_size)转成16进制的std::string(格式:FF FF FF)
         std::string toHexString() const;
 
+        // 写入固定长度int8_t类型的数据
+        void writeFint8(int8_t value);
+
+        // 写入固定长度uint8_t类型的数据
+        void writeFuint8(uint8_t value);
+
+        // 写入固定长度int16_t类型的数据(大端/小端)
+        void writeFint16(int16_t value);
+
+        // 写入固定长度uint16_t类型的数据(大端/小端)
+        void writeFuint16(uint16_t value);
+
+        // 写入固定长度int32_t类型的数据(大端/小端)
+        void writeFint32(int32_t value);
+
+        // 写入固定长度uint32_t类型的数据(大端/小端)
+        void writeFuint32(uint32_t value);
+
+        // 写入固定长度int64_t类型的数据(大端/小端)
+        void writeFint64(int64_t value);
+
+        // 写入固定长度uint64_t类型的数据(大端/小端)
+        void writeFuint64(uint64_t value);
+
+        // 写入有符号Varint32类型的数据
+        void writeInt32(int32_t value);
+
+        // 写入无符号Varint32类型的数据
+        void writeUint32(uint32_t value);
+
+        // 写入有符号Varint64类型的数据
+        void writeInt64(int64_t value);
+
+        // 写入无符号Varint64类型的数据
+        void writeUint64(uint64_t value);
+
+        // 写入float类型的数据
+        void writeFloat(float value);
+
+        // 写入double类型的数据
+        void writeDouble(double value);
+
+        // 写入std::string类型的数据,用uint16_t作为长度类型
+        void writeStringF16(const std::string &value);
+
+        // 写入std::string类型的数据,用uint32_t作为长度类型
+        void writeStringF32(const std::string &value);
+
+        // 写入std::string类型的数据,用uint64_t作为长度类型
+        void writeStringF64(const std::string &value);
+
+        // 写入std::string类型的数据,用无符号Varint64作为长度类型
+        void writeStringVint(const std::string &value);
+
+        // 写入std::string类型的数据,无长度
+        void writeStringWithoutLength(const std::string &value);
+
+        // 读取int8_t类型的数据
+        int8_t readFint8();
+
+        // 读取uint8_t类型的数据
+        uint8_t readFuint8();
+
+        // 读取int16_t类型的数据
+        int16_t readFint16();
+
+        // 读取uint16_t类型的数据
+        uint16_t readFuint16();
+
+        // 读取int32_t类型的数据
+        int32_t readFint32();
+
+        // 读取uint32_t类型的数据
+        uint32_t readFuint32();
+
+        // 读取int64_t类型的数据
+        int64_t readFint64();
+
+        // 读取uint64_t类型的数据
+        uint64_t readFuint64();
+
+        // 读取有符号Varint32类型的数据
+        int32_t readInt32();
+
+        // 读取无符号Varint32类型的数据
+        uint32_t readUint32();
+
+        // 读取有符号Varint64类型的数据
+        int64_t readInt64();
+
+        // 读取无符号Varint64类型的数据
+        uint64_t readUint64();
+
+        // 读取float类型的数据
+        float readFloat();
+
+        // 读取double类型的数据
+        double readDouble();
+
+        // 读取std::string类型的数据,用uint16_t作为长度
+        std::string readStringF16();
+
+        // 读取std::string类型的数据,用uint32_t作为长度
+        std::string readStringF32();
+
+        // 读取std::string类型的数据,用uint64_t作为长度
+        std::string readStringF64();
+
+        // 读取std::string类型的数据,用无符号Varint64作为长度
+        std::string readStringVint();
+
     private:
         // 扩容ByteArray,使其可以容纳size个数据(如果原本可以可以容纳,则不扩容)
         void addCapacity(size_t size);
