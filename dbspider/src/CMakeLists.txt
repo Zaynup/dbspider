@@ -15,6 +15,7 @@ set(LIB_SRC
     base/hook.cc
     base/lexical_cast.cc
     base/bytearray.cc
+    base/stream.cc
 
     sync/mutex.cc
     sync/co_condvar.cc

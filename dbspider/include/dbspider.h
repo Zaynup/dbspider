@@ -19,6 +19,7 @@
 #include "io_manager.h"
 #include "fd_manager.h"
 #include "bytearray.h"
+#include "stream.h"
 
 #include "sync.h"
 
