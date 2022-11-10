@@ -109,7 +109,7 @@ namespace dbspider
         size_t getCapacity() const { return m_capacity - m_position; }
 
     private:
-        size_t m_baseSize; // 内存快的大小
+        size_t m_baseSize; // 内存块的大小
         size_t m_position; // 当前操作位置
         size_t m_capacity; // 当前的总容量
         size_t m_size;     // 当前数据的大小
