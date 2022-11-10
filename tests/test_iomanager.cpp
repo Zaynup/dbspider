@@ -56,16 +56,20 @@ void test2()
     //            dbspider::Fiber::YieldToReady();
     //        }
     //    });
-    dbspider::IOManager::GetThis()->addEvent(STDIN_FILENO, dbspider::IOManager::READ, []()
-                                             {
-        while (true){
-            DBSPIDER_LOG_DEBUG(g_logger) << "connected r";
-            char buff[100];
-            DBSPIDER_LOG_INFO(g_logger) << "STDIN: " << fgets(buff,100,stdin);
-            dbspider::Fiber::YieldToReady();
-            //break;
-
-        } });
+    dbspider::IOManager::GetThis()->addEvent(
+        STDIN_FILENO,
+        dbspider::IOManager::READ,
+        []()
+        {
+            while (true)
+            {
+                DBSPIDER_LOG_DEBUG(g_logger) << "connected r";
+                char buff[100];
+                DBSPIDER_LOG_INFO(g_logger) << "STDIN: " << fgets(buff, 100, stdin);
+                dbspider::Fiber::YieldToReady();
+                // break;
+            }
+        });
     // dbspider::IOManager::GetThis()->cancelEvent(STDIN_FILENO,dbspider::IOManager::READ);
     // int cfd = connect(sock, (const sockaddr*)&addr, sizeof(addr));
     // DBSPIDER_LOG_INFO(g_logger)<<cfd;
@@ -76,16 +80,21 @@ void test3()
 {
     DBSPIDER_LOG_DEBUG(g_logger) << dbspider::Fiber::GetThis()->getState();
     dbspider::IOManager ioManager(3);
-    dbspider::IOManager::GetThis()->addEvent(STDIN_FILENO, dbspider::IOManager::READ, []()
-                                             {
-        while (true){
-            DBSPIDER_LOG_DEBUG(g_logger) << "connected r";
-            char buff[100];
-            DBSPIDER_LOG_INFO(g_logger) << fgets(buff,100,stdin);
-            //dbspider::Fiber::YieldToReady();
-            //break;
-            //dbspider::IOManager::GetThis()->addEvent(STDIN_FILENO, dbspider::IOManager::READ,)
-        } });
+    dbspider::IOManager::GetThis()->addEvent(
+        STDIN_FILENO,
+        dbspider::IOManager::READ,
+        []()
+        {
+            while (true)
+            {
+                DBSPIDER_LOG_DEBUG(g_logger) << "connected r";
+                char buff[100];
+                DBSPIDER_LOG_INFO(g_logger) << fgets(buff, 100, stdin);
+                // dbspider::Fiber::YieldToReady();
+                // break;
+                // dbspider::IOManager::GetThis()->addEvent(STDIN_FILENO, dbspider::IOManager::READ,)
+            }
+        });
 }
 
 void test_cb()
@@ -105,7 +114,8 @@ void test4()
 
 int main()
 {
-    // dbspider::Fiber::EnableFiber();
+    dbspider::Fiber::EnableFiber();
     test1();
-    // std::cout<<sizeof(D);
+
+    DBSPIDER_LOG_INFO(g_logger) << "finish!";
 }

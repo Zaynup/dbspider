@@ -8,6 +8,7 @@ namespace dbspider
 {
     class Stream
     {
+    public:
         using ptr = std::shared_ptr<Stream>;
 
         virtual ~Stream(){};

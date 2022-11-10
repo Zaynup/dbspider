@@ -19,6 +19,11 @@ set(LIB_SRC
 
     sync/mutex.cc
     sync/co_condvar.cc
+
+    net/address.cc
+    net/socket_stream.cc
+    net/socket.cc
+    net/tcp_server.cc
 )
 
 set(LIB_LIB pthread yaml-cpp dl)

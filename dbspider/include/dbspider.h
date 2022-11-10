@@ -23,10 +23,9 @@
 
 #include "sync.h"
 
-// #include "net/address.h"
-// #include "net/socket.h"
-// #include "net/socket_stream.h"
-// #include "net/tcp_server.h"
-// #include "net/uri.h"
+#include "address.h"
+#include "socket.h"
+#include "socket_stream.h"
+#include "tcp_server.h"
 
 // #include "time_measure.h"

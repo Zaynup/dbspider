@@ -77,8 +77,8 @@ namespace dbspider
         else
         {
             // 没有栈，说明是线程的主协程
-            DBSPIDER_ASSERT(m_state == EXEC); // 主协程一定是执行状态
             DBSPIDER_ASSERT(!m_cb);           // 主协程没有cb
+            DBSPIDER_ASSERT(m_state == EXEC); // 主协程一定是执行状态
             if (t_fiber == this)              // 当前协程就是自己
             {
                 SetThis(nullptr);
@@ -88,14 +88,14 @@ namespace dbspider
                                      << " total=" << s_fiber_count;
     }
 
-    // 切换到当前协程
+    // 切换到本协程
     void Fiber::resume()
     {
         SetThis(this);
         DBSPIDER_ASSERT2(m_state != EXEC, "Fiber id=" + std::to_string(m_id));
         m_state = EXEC;
 
-        if (swapcontext(&t_threadFiber->m_ctx, &m_ctx))
+        if (swapcontext(&(t_threadFiber->m_ctx), &m_ctx))
         {
             DBSPIDER_ASSERT2(false, "system error: swapcontext() fail");
         }
@@ -105,7 +105,7 @@ namespace dbspider
     void Fiber::yield()
     {
         SetThis(t_threadFiber.get());
-        if (swapcontext(&m_ctx, &t_threadFiber->m_ctx))
+        if (swapcontext(&m_ctx, &(t_threadFiber->m_ctx)))
         {
             DBSPIDER_ASSERT2(false, "system error: swapcontext() fail");
         }
