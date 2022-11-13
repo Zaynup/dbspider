@@ -69,6 +69,7 @@ namespace dbspider
         Fiber::YieldToHold();
     }
 
+    // 注意：协程锁解锁了才能加入到等待队列，否则别的协程无法获取锁，被唤醒后要重新获取锁
     void CoCondVar::wait(CoMutex::Lock &lock)
     {
         Fiber::ptr self = Fiber::GetThis();

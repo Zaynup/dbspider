@@ -45,17 +45,21 @@ void Main()
     DBSPIDER_LOG_INFO(g_logger) << res.getVal();
 
     // 第三种调用接口，异步回调
-    con->callback("add", 114514, 114514, [](dbspider::rpc::Result<int> res)
-                  { DBSPIDER_LOG_INFO(g_logger) << res.getVal(); });
+    con->callback("add", 114514, 114514,
+                  [](dbspider::rpc::Result<int> res)
+                  {
+                      DBSPIDER_LOG_INFO(g_logger) << res.getVal();
+                  });
 
     // 测试并发
-    // int n = 0;
-    // while (n != 10000)
-    // {
-    //     n++;
-    //     con->callback("add", 0, n, [](dbspider::rpc::Result<int> res)
-    //                   { DBSPIDER_LOG_INFO(g_logger) << res.getVal(); });
-    // }
+    int n = 0;
+    while (n != 10000)
+    {
+        n++;
+        con->callback("add", 0, n, [](dbspider::rpc::Result<int> res)
+                      { DBSPIDER_LOG_INFO(g_logger) << res.getVal(); });
+    }
+
     // 异步接口必须保证在得到结果之前程序不能退出
     sleep(3);
 }
