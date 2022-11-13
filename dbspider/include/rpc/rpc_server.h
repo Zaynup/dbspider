@@ -22,6 +22,7 @@ namespace dbspider::rpc
 
         RpcServer(IOManager *worker = IOManager::GetThis(),
                   IOManager *accept_worker = IOManager::GetThis());
+
         ~RpcServer();
 
         bool bind(Address::ptr address) override;
