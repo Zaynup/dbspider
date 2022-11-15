@@ -73,10 +73,12 @@ namespace dbspider::rpc
         DBSPIDER_LOG_DEBUG(g_logger) << "update heart";
         if (!heartTimer)
         {
-            heartTimer = m_worker->addTimer(m_AliveTime, [client]
+            heartTimer = m_worker->addTimer(m_AliveTime,
+                                            [client]
                                             {
-            DBSPIDER_LOG_DEBUG(g_logger) << "client:" << client->toString() << " closed";
-            client->close(); });
+                                                DBSPIDER_LOG_DEBUG(g_logger) << "client:" << client->toString() << " closed";
+                                                client->close();
+                                            });
             return;
         }
         // 更新定时器
