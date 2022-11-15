@@ -175,14 +175,19 @@ namespace dbspider::rpc
         bool m_isClose = true;
         bool m_isHeartClose = true;
         uint64_t m_timeout;
-        MutexType m_connMutex;                                              // 保护 m_conns
-        std::map<std::string, std::vector<std::string>> m_serviceCache;     // 服务名到全部缓存的服务地址列表映射
-        std::map<std::string, RpcClient::ptr> m_conns;                      // 服务名和服务地址的连接池
-        RpcSession::ptr m_registry;                                         // 服务中心连接
-        Timer::ptr m_heartTimer;                                            // 服务中心心跳定时器
-        Channel<Protocol::ptr> m_chan;                                      // 注册中心消息发送通道
-        std::map<std::string, Channel<Protocol::ptr>> m_discover_handle;    // 服务名到对应调用者协程的 Channel 映射
-        MutexType m_discover_mutex;                                         // m_discover_handle 的 mutex
+
+        std::map<std::string, std::vector<std::string>> m_serviceCache; // 服务名到全部缓存的服务地址列表映射
+
+        std::map<std::string, RpcClient::ptr> m_conns; // 服务名和服务地址的连接池
+        MutexType m_connMutex;                         // 保护 m_conns
+
+        RpcSession::ptr m_registry;    // 服务中心连接
+        Timer::ptr m_heartTimer;       // 服务中心心跳定时器
+        Channel<Protocol::ptr> m_chan; // 注册中心消息发送通道
+
+        std::map<std::string, Channel<Protocol::ptr>> m_discover_handle; // 服务名到对应调用者协程的 Channel 映射
+        MutexType m_discover_mutex;                                      // m_discover_handle 的 mutex
+
         std::map<std::string, std::function<void(Serializer)>> m_subHandle; // 处理订阅的消息回调函数
         MutexType m_sub_mtx;                                                // 保护m_subHandle
     };

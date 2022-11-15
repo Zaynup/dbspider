@@ -218,6 +218,7 @@ namespace dbspider::rpc
         m_chan << request;
 
         Protocol::ptr response = nullptr;
+
         // 等待 response，Channel内部会挂起协程，如果有消息到达或者被关闭则会被唤醒
         recvChan >> response;
 
@@ -263,27 +264,29 @@ namespace dbspider::rpc
             subscribe(RPC_SERVICE_SUBSCRIBE + name,
                       [name, this](Serializer s)
                       {
-                // false 为服务下线，true 为新服务节点上线
-                bool isNewServer = false;
-                std::string addr;
-                s >> isNewServer >> addr;
-                MutexType::Lock lock(m_connMutex);
-                if (isNewServer) 
-                {
-                    // 一个新的服务提供者节点加入，将服务地址加入服务列表缓存
-                    LOG_DEBUG << "service [ " << name << " : " << addr << " ] join";
-                    m_serviceCache[name].push_back(addr);
-                } else 
-                {
-                    // 已有服务提供者节点下线
-                    LOG_DEBUG << "service [ " << name << " : " << addr << " ] quit";
-                    // 清理缓存中断开的连接地址
-                    auto its = m_serviceCache.find(name);
-                    if (its != m_serviceCache.end()) 
-                    {
-                        std::erase(its->second, addr);
-                    }
-            } });
+                          // false 为服务下线，true 为新服务节点上线
+                          bool isNewServer = false;
+                          std::string addr;
+                          s >> isNewServer >> addr;
+                          MutexType::Lock lock(m_connMutex);
+                          if (isNewServer)
+                          {
+                              // 一个新的服务提供者节点加入，将服务地址加入服务列表缓存
+                              LOG_DEBUG << "service [ " << name << " : " << addr << " ] join";
+                              m_serviceCache[name].push_back(addr);
+                          }
+                          else
+                          {
+                              // 已有服务提供者节点下线
+                              LOG_DEBUG << "service [ " << name << " : " << addr << " ] quit";
+                              // 清理缓存中断开的连接地址
+                              auto its = m_serviceCache.find(name);
+                              if (its != m_serviceCache.end())
+                              {
+                                  std::erase(its->second, addr);
+                              }
+                          }
+                      });
         }
 
         return rt;

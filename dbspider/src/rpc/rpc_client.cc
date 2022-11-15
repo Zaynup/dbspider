@@ -158,6 +158,8 @@ namespace dbspider::rpc
                 break;
             }
             m_isHeartClose = false;
+
+            // 获取响应类型
             Protocol::MsgType type = response->getMsgType();
             // 判断响应类型进行对应的处理
             switch (type)

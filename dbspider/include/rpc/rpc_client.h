@@ -172,6 +172,7 @@ namespace dbspider::rpc
             // 向 send 协程的 Channel 发送消息
             m_chan << request;
 
+            // 添加定时器，如果调用超时则关闭Channel
             dbspider::Timer::ptr timer;
             bool timeout = false;
             if (m_timeout != (uint64_t)-1)
