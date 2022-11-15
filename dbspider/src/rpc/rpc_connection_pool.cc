@@ -101,7 +101,7 @@ namespace dbspider::rpc
             30'000, [this]
             {
                 DBSPIDER_LOG_DEBUG(g_logger) << "heart beat";
-                if (m_isHeartClose) 
+                if (m_isHeartClose)
                 {
                     DBSPIDER_LOG_DEBUG(g_logger) << "registry closed";
                     // 放弃服务中心
@@ -303,5 +303,4 @@ namespace dbspider::rpc
             return;
         it->second(s);
     }
-
 }
