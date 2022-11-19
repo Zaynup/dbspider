@@ -80,11 +80,23 @@ namespace dbspider
         static IOManager *GetThis();
 
     protected:
+        // 通知调度器有任务要调度
+        // 写 pipe 让 wait 协程从 epoll_wait 退出，待 wait 协程 yield 之后 Scheduler::run 就可以调度其他任务
+        // 如果当前没有空闲调度线程，那就没必要发通知
         void notify() override;
+
+        // wait(idle)协程
+        // 对于IO协程调度来说，应阻塞在等待IO事件上， wait 退出的时机是 epoll_wait 返回，对应的操作是 notify 或注册的IO事件就绪
+        // 调度器无调度任务时会阻塞在 wait 协程上，对IO调度器而言， wait 状态应该关注两件事，一是有没有新的调度任务，对应Schduler::submit()，
+        // 如果有新的调度任务，那应该立即退出 wait 状态，并执行对应的任务；二是关注当前注册的所有IO事件有没有触发，如果有触发，那么应该执行
+        // IO事件对应的回调函数
         void wait() override;
+
         bool stopping() override;
+
         // 重置socket句柄上下文的容器大小
         void contextResize(size_t size);
+
         void onInsertAtFront() override;
 
         // 判断是否可以停止

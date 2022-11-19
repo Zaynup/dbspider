@@ -11,6 +11,8 @@
 namespace dbspider
 {
     static Logger::ptr g_logger = DBSPIDER_LOG_NAME("system");
+
+    // 当前线程的调度器，同一个调度器下的所有线程指向同一个调度器实例
     static thread_local Scheduler *t_scheduler = nullptr;
 
     Scheduler::Scheduler(size_t threads, const std::string &name)
@@ -43,8 +45,11 @@ namespace dbspider
         m_threadIds.resize(m_threadCount);
         for (size_t i = 0; i < m_threadCount; ++i)
         {
-            m_threads[i].reset(new dbspider::Thread(m_name + "_" + std::to_string(i), [this]
-                                                    { this->run(); }));
+            m_threads[i].reset(new dbspider::Thread(m_name + "_" + std::to_string(i),
+                                                    [this]
+                                                    {
+                                                        this->run();
+                                                    }));
             m_threadIds[i] = m_threads[i]->getId();
         }
     }
@@ -123,6 +128,7 @@ namespace dbspider
                     m_tasks.erase(it++);
                     break;
                 }
+                // 当前线程拿完一个任务后，发现任务队列还有剩余，那么tickle一下其他线程
                 if (it != m_tasks.end())
                 {
                     tickle = true;
@@ -174,8 +180,11 @@ namespace dbspider
             }
             else
             {
+                // 进到这个分支情况一定是任务队列空了，调度idle协程即可
                 if (idle_fiber->getState() == Fiber::TERM)
                 {
+                    // 如果调度器没有调度任务，那么idle协程会不停地resume/yield，
+                    // 不会结束，如果idle协程结束了，那一定是调度器停止了
                     break;
                 }
                 ++m_idleThreads;

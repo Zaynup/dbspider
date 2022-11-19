@@ -159,7 +159,7 @@ namespace dbspider
         std::string m_name;                 // 调度器名字
 
     protected:
-        std::vector<int> m_threadIds;
+        std::vector<int> m_threadIds;            // 线程池的线程ID数组
         size_t m_threadCount = 0;                // 线程数量
         std::atomic<size_t> m_activeThreads = 0; // 活跃线程数
         std::atomic<size_t> m_idleThreads = 0;   // 空闲线程数

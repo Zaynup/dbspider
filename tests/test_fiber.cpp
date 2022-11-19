@@ -47,7 +47,6 @@ void test2()
 
 int main(int argc, char **argv)
 {
-    // dbspider::Fiber::EnableFiber();
-    // go test1;
-    go test2;
+    dbspider::Fiber::EnableFiber();
+    go test1;
 }

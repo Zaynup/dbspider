@@ -105,25 +105,31 @@ namespace dbspider
     IOManager::IOManager(size_t threads, const std::string &name)
         : Scheduler(threads, name)
     {
+        // 创建pipe，获取m_tickleFds[2]，其中m_tickleFds[0]是管道的读端，m_tickleFds[1]是管道的写端
         int rt = pipe(m_tickleFds);
         DBSPIDER_ASSERT(!rt);
 
+        // 创建epoll实例
         m_epfd = epoll_create(1);
         DBSPIDER_ASSERT(m_epfd > 0);
 
+        // 注册pipe读句柄的可读事件，用于tickle调度协程，通过epoll_event.data.fd保存描述符
         epoll_event event;
         memset(&event, 0, sizeof(epoll_event));
         event.events = EPOLLIN | EPOLLET;
         event.data.fd = m_tickleFds[0];
 
+        // 非阻塞方式，配合边缘触发
         rt = fcntl(m_tickleFds[0], F_SETFL, O_NONBLOCK);
         DBSPIDER_ASSERT(!rt);
 
+        // 将管道的读描述符加入epoll多路复用，如果管道可读，idle中的epoll_wait会返回
         rt = epoll_ctl(m_epfd, EPOLL_CTL_ADD, m_tickleFds[0], &event);
         DBSPIDER_ASSERT(!rt);
 
         contextResize(64);
 
+        // 这里直接开启了Schedluer，也就是说IOManager创建即可调度协程
         start();
     }
 
@@ -153,6 +159,8 @@ namespace dbspider
     bool IOManager::addEvent(int fd, Event event, std::function<void()> cb)
     {
         DBSPIDER_LOG_DEBUG(g_logger) << "addEvent() : fd=" << fd << " event=" << (event == 1 ? "read" : "write");
+
+        // 找到fd对应的FdContext，如果不存在，那就分配一个
         FdContext *fdContext = nullptr;
         RWMutexType::ReadLock lock(m_mutex);
         if ((int)m_fdContexts.size() > fd)
@@ -167,6 +175,7 @@ namespace dbspider
             contextResize(fd * 1.5);
             fdContext = m_fdContexts[fd];
         }
+        // 同一个fd不允许重复添加相同的事件
         FdContext::MutexType::Lock lock2(fdContext->mutex);
         if (fdContext->events & event)
         {
@@ -174,6 +183,8 @@ namespace dbspider
                                          << "event=" << event << " FdContext->event=" << fdContext->events;
             DBSPIDER_ASSERT(!(fdContext->events & event));
         }
+
+        // 将新的事件加入epoll_wait，使用epoll_event的私有指针存储FdContext的位置
         int op = fdContext->events ? EPOLL_CTL_MOD : EPOLL_CTL_ADD;
         Event newEvent = (Event)(event | fdContext->events);
         epoll_event epevent;
@@ -188,10 +199,15 @@ namespace dbspider
             return false;
         }
 
+        // 待执行IO事件数加1
         m_pendingEventCount++;
+
+        // 找到这个fd的event事件对应的EventContext，对其中的scheduler, cb, fiber进行赋值
         fdContext->events = newEvent;
         FdContext::EventContext &eventContext = fdContext->getContext(event);
         DBSPIDER_ASSERT(eventContext.empty());
+
+        // 赋值scheduler和回调函数，如果回调函数为空，则把当前协程当成回调执行体
         eventContext.scheduler = Scheduler::GetThis();
         if (cb)
         {
@@ -210,6 +226,7 @@ namespace dbspider
     bool IOManager::delEvent(int fd, Event event)
     {
         RWMutexType::ReadLock lock(m_mutex);
+        // 找到要删除的fd
         if ((int)m_fdContexts.size() <= fd)
         {
             return false;
@@ -223,6 +240,7 @@ namespace dbspider
             return false;
         }
 
+        // 清除指定的事件，表示不关心这个事件了，如果清除之后结果为0，则从epoll_wait中删除该文件描述符
         Event newEvents = (Event)(fdContext->events & ~event);
         int op = fdContext->events ? EPOLL_CTL_MOD : EPOLL_CTL_DEL;
         epoll_event epevent;
@@ -237,7 +255,10 @@ namespace dbspider
             return false;
         }
 
+        // 待执行事件数减1
         m_pendingEventCount--;
+
+        // 重置该fd对应的event事件上下文
         fdContext->events = newEvents;
         FdContext::EventContext &eventContext = fdContext->getContext(event);
         fdContext->resetContext(eventContext);
@@ -249,6 +270,7 @@ namespace dbspider
     bool IOManager::cancelEvent(int fd, Event event)
     {
         RWMutexType::ReadLock lock(m_mutex);
+        // 找到fd对应的FdContext
         if ((int)m_fdContexts.size() <= fd)
         {
             return false;
@@ -260,6 +282,8 @@ namespace dbspider
         {
             return false;
         }
+
+        // 删除事件
         Event newEvents = (Event)(fdContext->events & ~event);
         int op = fdContext->events ? EPOLL_CTL_MOD : EPOLL_CTL_DEL;
         epoll_event epevent;
@@ -273,7 +297,11 @@ namespace dbspider
                                          << epevent.events << "):" << rt << " (" << errno << ") (" << strerror(errno) << ")";
             return false;
         }
+
+        // 删除之前触发一次事件
         fdContext->triggerEvent(event);
+
+        // 活跃事件数减1
         m_pendingEventCount--;
         return true;
     }
@@ -281,6 +309,7 @@ namespace dbspider
     // 取消所有事件
     bool IOManager::cancelAllEvent(int fd)
     {
+        // 找到fd对应的FdContext
         RWMutexType::ReadLock lock(m_mutex);
         if ((int)m_fdContexts.size() <= fd)
         {
@@ -293,6 +322,8 @@ namespace dbspider
         {
             return false;
         }
+
+        // 删除全部事件
         int op = EPOLL_CTL_DEL;
         epoll_event epevent;
         memset(&epevent, 0, sizeof(epoll_event));
@@ -306,6 +337,7 @@ namespace dbspider
                                          << epevent.events << "):" << rt << " (" << errno << ") (" << strerror(errno) << ")";
             return false;
         }
+        // 触发全部已注册的事件
         if (fdContext->events & READ)
         {
             fdContext->triggerEvent(READ);
@@ -344,7 +376,8 @@ namespace dbspider
     void IOManager::wait()
     {
         DBSPIDER_LOG_DEBUG(g_logger) << "wait for event";
-        const uint64_t MAX_EVNETS = 256;
+
+        const uint64_t MAX_EVNETS = 256; // 一次epoll_wait最多检测256个就绪事件，如果就绪事件超过了这个数，那么会在下轮epoll_wati继续处理
         epoll_event *events = new epoll_event[MAX_EVNETS]();
         std::unique_ptr<epoll_event[]> uniquePtr(events);
         while (true)
@@ -368,6 +401,7 @@ namespace dbspider
                 {
                     next_timeout = MAX_TIMEOUT;
                 }
+                // 阻塞在epoll_wait上，等待事件发生
                 rt = epoll_wait(m_epfd, events, MAX_EVNETS, (int)next_timeout);
                 if (rt < 0 && errno == EINTR)
                 {
@@ -386,19 +420,25 @@ namespace dbspider
                 submit(cbs.begin(), cbs.end());
             }
 
+            // 遍历所有发生的事件，根据epoll_event的私有指针找到对应的FdContext，进行事件处理
             for (int i = 0; i < rt; ++i)
             {
                 epoll_event &event = events[i];
                 if (event.data.fd == m_tickleFds[0])
                 {
+                    // ticklefd[0]用于通知协程调度，这时只需要把管道里的内容读完即可，本轮 wait 结束 Scheduler::run 会重新执行协程调度
                     uint8_t dummy[256];
                     while (read(m_tickleFds[0], dummy, sizeof(dummy)) > 0)
                         ;
                     continue;
                 }
+                // 通过epoll_event的私有指针获取FdContext
                 FdContext *fdContext = static_cast<FdContext *>(event.data.ptr);
                 FdContext::MutexType::Lock lock(fdContext->mutex);
 
+                // EPOLLERR: 出错，比如写读端已经关闭的pipe
+                // EPOLLHUP: 套接字对端关闭
+                // 出现这两种事件，应该同时触发fd的读和写事件，否则有可能出现注册的事件永远执行不到的情况
                 if (event.events & (EPOLLERR | EPOLLHUP))
                 {
                     event.events |= ((EPOLLIN | EPOLLOUT) & fdContext->events);
@@ -416,6 +456,9 @@ namespace dbspider
                 {
                     continue;
                 }
+
+                // 剔除已经发生的事件，将剩下的事件重新加入epoll_wait，
+                // 如果剩下的事件为0，表示这个fd已经不需要关注了，直接从epoll中删除
                 int left_events = fdContext->events & ~real_events;
                 int op = left_events ? EPOLL_CTL_MOD : EPOLL_CTL_DEL;
                 event.events = left_events | EPOLLET;
@@ -426,6 +469,8 @@ namespace dbspider
                                                  << event.events << "):" << res << " (" << errno << ") (" << strerror(errno) << ")";
                     continue;
                 }
+
+                // 处理已经发生的事件，也就是让调度器调度指定的函数或协程
                 if (real_events & READ)
                 {
                     fdContext->triggerEvent(READ);
@@ -438,6 +483,8 @@ namespace dbspider
                 }
             }
 
+            // 一旦处理完所有的事件， wait 协程 yield ，这样可以让调度协程(Scheduler::run)重新检查是否有新任务要调度
+            // 上面triggerEvent实际也只是把对应的fiber重新加入调度，要执行的话还要等 wait 协程退出
             Fiber::YieldToHold();
         }
     }

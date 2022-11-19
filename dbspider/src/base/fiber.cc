@@ -7,7 +7,10 @@ namespace dbspider
 {
     static Logger::ptr g_logger = DBSPIDER_LOG_NAME("system");
 
+    // 全局静态变量，用于生成协程id
     static std::atomic<uint64_t> s_fiber_id{0};
+
+    // 全局静态变量，用于统计当前的协程数
     static std::atomic<uint64_t> s_fiber_count{0};
 
     // 当前线程正在运行的协程指针
@@ -95,6 +98,7 @@ namespace dbspider
         DBSPIDER_ASSERT2(m_state != EXEC, "Fiber id=" + std::to_string(m_id));
         m_state = EXEC;
 
+        // 保存当前上下文到主协程，切换到子协程上下文
         if (swapcontext(&(t_threadFiber->m_ctx), &m_ctx))
         {
             DBSPIDER_ASSERT2(false, "system error: swapcontext() fail");
@@ -105,6 +109,8 @@ namespace dbspider
     void Fiber::yield()
     {
         SetThis(t_threadFiber.get());
+
+        // 保存子协程上下文，切换到主协程上下文
         if (swapcontext(&m_ctx, &(t_threadFiber->m_ctx)))
         {
             DBSPIDER_ASSERT2(false, "system error: swapcontext() fail");
