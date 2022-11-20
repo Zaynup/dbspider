@@ -30,6 +30,9 @@ namespace dbspider::rpc
 
         bool start() override;
 
+        // 设置RPC服务器名称
+        void setName(const std::string &name) override;
+
         // 注册函数
         template <typename Func>
         void registerMethod(const std::string &name, Func func)
@@ -39,9 +42,6 @@ namespace dbspider::rpc
                 proxy(func, serializer, arg);
             };
         }
-
-        // 设置RPC服务器名称
-        void setName(const std::string &name) override;
 
         // 发布消息
         template <typename T>
@@ -72,12 +72,28 @@ namespace dbspider::rpc
         }
 
     protected:
+        // 更新心跳定时器
+        void update(Timer::ptr &heartTimer, Socket::ptr client);
+
         // 向服务注册中心发起注册
         void registerService(const std::string &name);
 
         // 调用服务端注册的函数，返回序列化完的结果
         Serializer call(const std::string &name, const std::string &arg);
 
+        // 处理客户端连接
+        void handleClient(Socket::ptr client) override;
+
+        // 处理客户端过程调用请求
+        Protocol::ptr handleMethodCall(Protocol::ptr proto);
+
+        // 处理心跳包
+        Protocol::ptr handleHeartbeatPacket(Protocol::ptr proto);
+
+        // 处理订阅请求
+        Protocol::ptr handleSubscribe(Protocol::ptr proto, RpcSession::ptr client);
+
+    protected:
         // 调用代理
         template <typename F>
         void proxy(F fun, Serializer serializer, const std::string &arg)
@@ -124,21 +140,6 @@ namespace dbspider::rpc
             val.setVal(rt);
             serializer << val;
         }
-
-        // 更新心跳定时器
-        void update(Timer::ptr &heartTimer, Socket::ptr client);
-
-        // 处理客户端连接
-        void handleClient(Socket::ptr client) override;
-
-        // 处理客户端过程调用请求
-        Protocol::ptr handleMethodCall(Protocol::ptr proto);
-
-        // 处理心跳包
-        Protocol::ptr handleHeartbeatPacket(Protocol::ptr proto);
-
-        // 处理订阅请求
-        Protocol::ptr handleSubscribe(Protocol::ptr proto, RpcSession::ptr client);
 
     private:
         std::map<std::string, std::function<void(Serializer, const std::string &)>> m_handlers; // 保存注册的函数

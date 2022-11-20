@@ -65,6 +65,36 @@ namespace dbspider
             return true;
         }
 
+        // 从 Channel 读取数据，最多阻塞指定的 timeout
+        // timeout 等待时间 (ms)
+        // t 读取的结果
+        // true 表示读取到数据; false 表示等待超时
+        bool waitFor(T &t, uint64_t timeout_ms)
+        {
+            CoMutex::Lock lock(m_mutex);
+            if (m_isClose)
+            {
+                return false;
+            }
+            // 如果缓冲区为空，等待m_pushCv唤醒
+            while (m_queue.empty())
+            {
+                if (!m_popCv.waitFor(lock, timeout_ms))
+                {
+                    return false;
+                }
+                if (m_isClose)
+                {
+                    return false;
+                }
+            }
+            t = m_queue.front();
+            m_queue.pop();
+            // 唤醒 m_pushCv
+            m_pushCv.notify();
+            return true;
+        }
+
         ChannelImpl &operator>>(T &t)
         {
             pop(t);
@@ -137,6 +167,15 @@ namespace dbspider
         bool unique() const { return m_channel.unique(); }
 
         operator bool() const { return *m_channel; }
+
+        // 从 Channel 读取数据，最多阻塞指定的 timeout
+        // timeout 等待时间 (ms)
+        // t 读取的结果
+        // true 表示读取到数据; false 表示等待超时
+        bool waitFor(T &t, uint64_t timeout_ms)
+        {
+            return m_channel->waitFor(t, timeout_ms);
+        }
 
         Channel &operator>>(T &t)
         {

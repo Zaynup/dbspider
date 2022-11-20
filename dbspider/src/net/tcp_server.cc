@@ -21,7 +21,11 @@ namespace dbspider
 
     TcpServer::~TcpServer()
     {
-        // stop();
+        for (auto &i : m_listens)
+        {
+            i->close();
+        }
+        m_listens.clear();
     }
 
     bool TcpServer::bind(Address::ptr addr)
@@ -69,7 +73,6 @@ namespace dbspider
 
     bool TcpServer::start()
     {
-        // m_worker->addTimer(-1, []{}, true);
         if (!isStop())
         {
             return false;
@@ -86,8 +89,7 @@ namespace dbspider
                 });
         }
         DBSPIDER_LOG_DEBUG(g_logger) << "TcpServer::start()";
-        // m_acceptWorker->addTimer(-1, []{}, true);
-        // m_worker->addTimer(-1, []{}, true);
+
         return true;
     }
 
@@ -101,12 +103,15 @@ namespace dbspider
 
         TcpServer::ptr self = shared_from_this();
 
-        m_acceptWorker->submit([self, this]
-                               {
-        for(auto& sock : m_listens) {
-            sock->cancelAll();
-            sock->close();
-        } });
+        m_acceptWorker->submit(
+            [self, this]
+            {
+                for (auto &sock : m_listens)
+                {
+                    sock->cancelAll();
+                    sock->close();
+                }
+            });
     }
 
     void TcpServer::startAccept(Socket::ptr sock)

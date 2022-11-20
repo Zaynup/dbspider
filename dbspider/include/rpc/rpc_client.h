@@ -72,17 +72,18 @@ namespace dbspider::rpc
             constexpr auto size = std::tuple_size<typename std::decay<decltype(tp)>::type>::value;
             auto cb = std::get<size - 1>(tp);
             static_assert(function_traits<decltype(cb)>{}.arity == 1, "callback type not support");
-            using res = typename function_traits<decltype(cb)>::args<0>::type;
+            using res = typename function_traits<decltype(cb)>::template args<0>::type;
             using rt = typename res::row_type;
             static_assert(std::is_invocable_v<decltype(cb), Result<rt>>, "callback type not support");
             RpcClient::ptr self = shared_from_this();
-            go[cb = std::move(cb), name = std::move(name), tp = std::move(tp), size, self, this]
+            go[cb = std::move(cb), name = std::move(name), tp = std::move(tp), self, this]
             {
-                auto proxy = [&cb, &name, &tp, &size, &self, this ]<std::size_t... Index>(std::index_sequence<Index...>)
+                auto proxy = [&cb, &name, &tp, this ]<std::size_t... Index>(std::index_sequence<Index...>)
                 {
                     cb(call<rt>(name, std::get<Index>(tp)...));
                 };
                 proxy(std::make_index_sequence<size - 1>{});
+                (void)self;
             };
         }
 
@@ -172,27 +173,11 @@ namespace dbspider::rpc
             // 向 send 协程的 Channel 发送消息
             m_chan << request;
 
-            // 添加定时器，如果调用超时则关闭Channel
-            dbspider::Timer::ptr timer;
             bool timeout = false;
-            if (m_timeout != (uint64_t)-1)
-            {
-                // 如果调用超时则关闭接收 Channel
-                timer = IOManager::GetThis()->addTimer(m_timeout,
-                                                       [recvChan, &timeout]() mutable
-                                                       {
-                                                           timeout = true;
-                                                           recvChan.close();
-                                                       });
-            }
-
             Protocol::ptr response;
-            // 等待 response，Channel内部会挂起协程，如果有消息到达或者被关闭则会被唤醒
-            recvChan >> response;
-
-            if (timer)
+            if (!recvChan.waitFor(response, m_timeout))
             {
-                timer->cancel();
+                timeout = true;
             }
 
             {

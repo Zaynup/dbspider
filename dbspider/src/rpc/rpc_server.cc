@@ -155,36 +155,30 @@ namespace dbspider::rpc
             // 更新定时器
             update(heartTimer, client);
 
-            auto self = shared_from_this();
-            // 启动一个任务协程
-            go[request, session, self, this]() mutable
+            Protocol::ptr response;
+            Protocol::MsgType type = request->getMsgType();
+            switch (type)
             {
-                Protocol::ptr response;
-                Protocol::MsgType type = request->getMsgType();
-                switch (type)
-                {
-                case Protocol::MsgType::HEARTBEAT_PACKET:
-                    response = handleHeartbeatPacket(request);
-                    break;
-                case Protocol::MsgType::RPC_METHOD_REQUEST:
-                    response = handleMethodCall(request);
-                    break;
-                case Protocol::MsgType::RPC_SUBSCRIBE_REQUEST:
-                    response = handleSubscribe(request, session);
-                    break;
-                case Protocol::MsgType::RPC_PUBLISH_RESPONSE:
-                    return;
-                default:
-                    DBSPIDER_LOG_DEBUG(g_logger) << "protocol:" << request->toString();
-                    break;
-                }
+            case Protocol::MsgType::HEARTBEAT_PACKET:
+                response = handleHeartbeatPacket(request);
+                break;
+            case Protocol::MsgType::RPC_METHOD_REQUEST:
+                response = handleMethodCall(request);
+                break;
+            case Protocol::MsgType::RPC_SUBSCRIBE_REQUEST:
+                response = handleSubscribe(request, session);
+                break;
+            case Protocol::MsgType::RPC_PUBLISH_RESPONSE:
+                return;
+            default:
+                DBSPIDER_LOG_DEBUG(g_logger) << "protocol:" << request->toString();
+                break;
+            }
 
-                if (response)
-                {
-                    session->sendProtocol(response);
-                }
-                self = nullptr;
-            };
+            if (response)
+            {
+                session->sendProtocol(response);
+            }
         }
     }
 

@@ -14,6 +14,15 @@ void Main()
 
     dbspider::rpc::RpcServer::ptr server = std::make_shared<dbspider::rpc::RpcServer>();
 
+    // 先绑定本地地址
+    while (!server->bind(local))
+    {
+        sleep(1);
+    }
+
+    // 绑定服务注册中心
+    server->bindRegistry(registry);
+
     // 注册服务，支持函数指针和函数对象，支持标准库容器
     server->registerMethod("add", add);
     server->registerMethod("echo", [](std::string str)
@@ -24,15 +33,6 @@ void Main()
                                std::reverse(vec.begin(), vec.end());
                                return vec;
                            });
-
-    // 先绑定本地地址
-    while (!server->bind(local))
-    {
-        sleep(1);
-    }
-
-    // 绑定服务注册中心
-    server->bindRegistry(registry);
 
     // 开始监听并处理服务请求
     server->start();

@@ -10,12 +10,15 @@ namespace dbspider
         {
             // 获取一个等待的协程
             MutexType::Lock lock(m_mutex);
-            if (m_waitQueue.empty())
+            while (m_waitQueue.size())
             {
-                return;
+                fiber = *m_waitQueue.begin();
+                m_waitQueue.erase(m_waitQueue.begin());
+                if (fiber)
+                {
+                    break;
+                }
             }
-            fiber = m_waitQueue.front();
-            m_waitQueue.pop();
             if (m_timer)
             {
                 // 删除定时器
@@ -36,8 +39,8 @@ namespace dbspider
         // 将全部等待的协程重新加入调度
         while (m_waitQueue.size())
         {
-            Fiber::ptr fiber = m_waitQueue.front();
-            m_waitQueue.pop();
+            Fiber::ptr fiber = *m_waitQueue.begin();
+            m_waitQueue.erase(m_waitQueue.begin());
             if (fiber)
             {
                 go fiber;
@@ -57,12 +60,12 @@ namespace dbspider
         {
             MutexType::Lock lock(m_mutex);
             // 将自己加入等待队列
-            m_waitQueue.push(self);
+            m_waitQueue.insert(self);
             if (!m_timer)
             {
                 // 加入一个空任务定时器，不让调度器退出
                 m_timer = IOManager::GetThis()->addTimer(
-                    -1, [] {}, true);
+                    UINT32_MAX, [] {}, true);
             }
         }
         // 让出协程
@@ -76,12 +79,12 @@ namespace dbspider
         {
             MutexType::Lock lock1(m_mutex);
             // 将自己加入等待队列
-            m_waitQueue.push(self);
+            m_waitQueue.insert(self);
             if (!m_timer)
             {
                 // 加入一个空任务定时器，不让调度器退出
                 m_timer = IOManager::GetThis()->addTimer(
-                    -1, [] {}, true);
+                    UINT32_MAX, [] {}, true);
             }
             // 先解锁
             lock.unlock();
@@ -93,4 +96,56 @@ namespace dbspider
         lock.lock();
     }
 
+    bool CoCondVar::waitFor(CoMutex::Lock &lock, uint64_t timeout_ms)
+    {
+        if (timeout_ms == (uint64_t)-1)
+        {
+            wait(lock);
+            return true;
+        }
+        Fiber::ptr self = Fiber::GetThis();
+        IOManager *ioManager = dbspider::IOManager::GetThis();
+        std::shared_ptr<bool> timeCondition(new bool{false});
+        std::weak_ptr<bool> weakPtr(timeCondition);
+        Timer::ptr timer;
+        {
+            MutexType::Lock lock1(m_mutex);
+            // 将自己加入等待队列
+            m_waitQueue.insert(self);
+            // 先解锁
+            lock.unlock();
+            timer = IOManager::GetThis()->addConditionTimer(
+                timeout_ms,
+                [weakPtr, ioManager, self, this]() mutable
+                {
+                    MutexType::Lock lock(m_mutex);
+                    auto t = weakPtr.lock();
+                    if (!t)
+                    {
+                        return;
+                    }
+                    *t = true;
+                    m_waitQueue.erase(self);
+                    ioManager->submit(self);
+                },
+                weakPtr);
+        }
+        // 让出协程
+        Fiber::YieldToHold();
+        {
+            MutexType::Lock lock1(m_mutex);
+            if (timer && !(*timeCondition))
+            {
+                timer->cancel();
+            }
+            // 重新获取锁
+            lock.lock();
+            if (*timeCondition)
+            {
+                // 超时
+                return false;
+            }
+            return true;
+        }
+    }
 }

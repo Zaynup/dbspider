@@ -300,7 +300,9 @@ namespace dbspider::rpc
         MutexType::Lock lock(m_sub_mtx);
         auto it = m_subHandle.find(key);
         if (it == m_subHandle.end())
+        {
             return;
+        }
         it->second(s);
     }
 }
