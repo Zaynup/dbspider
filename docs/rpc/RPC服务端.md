@@ -1,20 +1,20 @@
 # RPC服务端
 
-## 1. RPC服务端概述
+## 1. RPC服务端 `RpcServer` 概述
 
 + 继承自 **`TcpServer`** 。
-+ 向服务注册中心 **`RpcRegister`** 注册服务 ----> `registerMethod()` ----> `registerService()` 。
-+ 处理客户端远程过程调用 ----> `handleMethodCall()` ----> `call()`  。
-+ 处理客户端订阅请求 ----> `handleSubscribe()` 。
-+ 采用心跳进行健康检查：
++ 向服务注册中心 **`RpcRegister`** **注册服务** ----> `registerMethod()` ----> `registerService()` 。
++ 处理客户端**远程过程调用** ----> `handleMethodCall()` ----> `call()`  。
++ 处理客户端**订阅**请求 ----> `handleSubscribe()` 。
++ 采用心跳进行**健康检查**：
   + 处理服务注册中心的 `m_heartTimer` ；
   + 处理客户端的 `handleHeartbeatPacket()` 。
 
 ## 2. RPC服务端流程
 
-+ (1) 创建RpcServer对象；
-+ (2) bind绑定本地地址；
-+ (3) bindRegistry绑定服务注册中心地址；
++ (1) 创建 **RpcServer** 对象；
++ (2) `bind()` 绑定本地地址；
++ (3) `bindRegistry()` 绑定服务注册中心地址；
 + (4) 调用 `registerMethod()`注册本地服务或调用 `publish()` 发布消息；
 + (5) 调用 `start()`方法开启 `RpcServer` 服务端；
   + 向服务注册中心 `registerService` ；
@@ -270,7 +270,7 @@ private:
     }
     ```
 
-#### 3.3.3.1 `handleHeartbeatPacket()` 方法
+#### 3.3.3.1 心跳检测：`handleHeartbeatPacket()` 方法
 
 + 接收到客户端的 `HEARTBEAT_PACKET` 心跳包，调用 `handleHeartbeatPacket()` 向客户端返回心跳包。
 
@@ -281,7 +281,7 @@ private:
     }
     ```
 
-#### 3.3.3.2 `handleMethodCall()` 方法
+#### 3.3.3.2 服务调用：`handleMethodCall()` 方法
 
 + 收到客户端的 `RPC_METHOD_REQUEST` ，调用 `handleMethodCall()`，处理客户端的服务调用。
   + (1) 解析请求服务名和参数
@@ -301,7 +301,7 @@ private:
   }
   ```
 
-#### 3.3.3.3 `handleSubscribe()` 方法
+#### 3.3.3.3 服务订阅：`handleSubscribe()` 方法
 
 + 收到客户端的订阅消息 `RPC_SUBSCRIBE_REQUEST` ，调用 `handleSubscribe()` 将订阅key和与客户端的会话保存到 `m_subscribes`。
 
@@ -320,7 +320,7 @@ private:
     }
     ```
 
-### 3.3.4 `publish()` 方法
+### 3.3.4 消息发布：`publish()` 方法
 
 + 向每一个订阅了 `key` 的客户端，发布消息
 
