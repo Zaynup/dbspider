@@ -157,7 +157,8 @@ private:
     + 若未超时，服务注册中心刷新定时器；
     + 若超时，则会被服务注册中心取消注册，并向订阅此服务的客户端发布服务下线通知。
   + 3. 开启协程定时清理订阅列表
-
+  + 4. 开启监听，并处理客户端连接事件 --> `handleClient()`
+ 
     ```C++
     bool RpcServer::start()
     {
@@ -215,3 +216,140 @@ private:
         return TcpServer::start();
     }
     ```
+
+#### 3.3.3 `handleClient()` 方法
+
++ 处理客户端心跳检测 --> `handleHeartbeatPacket()`
++ 处理客户端方法调用 --> `handleMethodCall()`
++ 处理客户端订阅 --> `handleSubscribe()`
+
+    ```C++
+    void RpcServer::handleClient(Socket::ptr client)
+    {
+        DBSPIDER_LOG_DEBUG(g_logger) << "handleClient: " << client->toString();
+        RpcSession::ptr session = std::make_shared<RpcSession>(client);
+
+        Timer::ptr heartTimer;
+        // 开启心跳定时器
+        update(heartTimer, client);
+        while (true)
+        {
+            Protocol::ptr request = session->recvProtocol();
+            if (!request)
+            {
+                break;
+            }
+            // 更新定时器
+            update(heartTimer, client);
+
+            Protocol::ptr response;
+            Protocol::MsgType type = request->getMsgType();
+            switch (type)
+            {
+            case Protocol::MsgType::HEARTBEAT_PACKET:
+                response = handleHeartbeatPacket(request);
+                break;
+            case Protocol::MsgType::RPC_METHOD_REQUEST:
+                response = handleMethodCall(request);
+                break;
+            case Protocol::MsgType::RPC_SUBSCRIBE_REQUEST:
+                response = handleSubscribe(request, session);
+                break;
+            case Protocol::MsgType::RPC_PUBLISH_RESPONSE:
+                return;
+            default:
+                DBSPIDER_LOG_DEBUG(g_logger) << "protocol:" << request->toString();
+                break;
+            }
+
+            if (response)
+            {
+                session->sendProtocol(response);
+            }
+        }
+    }
+    ```
+
+#### 3.3.3.1 `handleHeartbeatPacket()` 方法
+
++ 接收到客户端的 `HEARTBEAT_PACKET` 心跳包，调用 `handleHeartbeatPacket()` 向客户端返回心跳包。
+
+    ```C++
+    Protocol::ptr RpcServer::handleHeartbeatPacket(Protocol::ptr p)
+    {
+        return Protocol::HeartBeat();
+    }
+    ```
+
+#### 3.3.3.2 `handleMethodCall()` 方法
+
++ 收到客户端的 `RPC_METHOD_REQUEST` ，调用 `handleMethodCall()`，处理客户端的服务调用。
+  + (1) 解析请求服务名和参数
+  + (2) 调用服务端本地方法(`m_handlers`)
+  + (3) 向客户端返回调用结果
+
+  ```C++
+  Protocol::ptr RpcServer::handleMethodCall(Protocol::ptr p)
+  {
+      std::string func_name;
+      Serializer request(p->getContent());
+      request >> func_name;
+      Serializer rt = call(func_name, request.toString());
+      Protocol::ptr response = Protocol::Create(
+          Protocol::MsgType::RPC_METHOD_RESPONSE, rt.toString(), p->getSequenceId());
+      return response;
+  }
+  ```
+
+#### 3.3.3.3 `handleSubscribe()` 方法
+
++ 收到客户端的订阅消息 `RPC_SUBSCRIBE_REQUEST` ，调用 `handleSubscribe()` 将订阅key和与客户端的会话保存到 `m_subscribes`。
+
+    ```C++
+    Protocol::ptr RpcServer::handleSubscribe(Protocol::ptr proto, RpcSession::ptr client)
+    {
+        MutexType::Lock lock(m_sub_mtx);
+        std::string key;
+        Serializer s(proto->getContent());
+        s >> key;
+        m_subscribes.emplace(key, std::weak_ptr<RpcSession>(client));
+        Result<> res = Result<>::Success();
+        s.reset();
+        s << res;
+        return Protocol::Create(Protocol::MsgType::RPC_SUBSCRIBE_RESPONSE, s.toString(), 0);
+    }
+    ```
+
+### 3.3.4 `publish()` 方法
+
++ 向每一个订阅了 `key` 的客户端，发布消息
+
+```C++
+// 发布消息
+template <typename T>
+void publish(const std::string &key, T data)
+{
+    {
+        MutexType::Lock lock(m_sub_mtx);
+        if (m_subscribes.empty())
+        {
+            return;
+        }
+    }
+    Serializer s;
+    s << key << data;
+    s.reset();
+    Protocol::ptr pub = Protocol::Create(Protocol::MsgType::RPC_PUBLISH_REQUEST, s.toString(), 0);
+    MutexType::Lock lock(m_sub_mtx);
+    auto range = m_subscribes.equal_range(key);
+    for (auto it = range.first; it != range.second; ++it)
+    {
+        auto conn = it->second.lock();
+        if (conn == nullptr || !conn->isConnected())
+        {
+            continue;
+        }
+        conn->sendProtocol(pub);
+    }
+}
+```
