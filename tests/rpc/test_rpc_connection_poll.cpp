@@ -45,13 +45,16 @@ void test_subscribe()
     // dbspider::rpc::RpcConnectionPool::ptr con = std::make_shared<dbspider::rpc::RpcConnectionPool>(5);
     dbspider::rpc::RpcConnectionPool::ptr con = std::make_shared<dbspider::rpc::RpcConnectionPool>();
     con->connect(address);
-    con->subscribe("data", [](dbspider::rpc::Serializer s)
+    con->subscribe("data",
+                   [](dbspider::rpc::Serializer s)
                    {
-        std::vector<int> vec;
-        s >> vec;
-        std::string str;
-        std::for_each(vec.begin(), vec.end(),[&str](int i) mutable { str += std::to_string(i);});
-        LOG_DEBUG << "recv publish: " << str; });
+                       std::vector<int> vec;
+                       s >> vec;
+                       std::string str;
+                       std::for_each(vec.begin(), vec.end(), [&str](int i) mutable
+                                     { str += std::to_string(i); });
+                       LOG_DEBUG << "recv publish: " << str;
+                   });
     while (true)
     {
         sleep(5);

@@ -183,7 +183,7 @@ namespace dbspider::rpc
         std::map<std::string, Channel<Protocol::ptr>>::iterator it;
 
         MutexType::Lock lock(m_discover_mutex);
-        // 查找该序列号的 Channel 是否还存在，如果不存在直接返回
+        // 查找该服务名的 Channel 是否还存在，如果不存在直接返回
         it = m_discover_handle.find(service);
         if (it == m_discover_handle.end())
         {
@@ -207,7 +207,7 @@ namespace dbspider::rpc
         std::map<std::string, Channel<Protocol::ptr>>::iterator it;
         {
             MutexType::Lock lock(m_discover_mutex);
-            // 将请求序列号与接收 Channel 关联
+            // 将请求服务名与接收 Channel 关联
             it = m_discover_handle.emplace(name, recvChan).first;
         }
 
