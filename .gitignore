@@ -36,4 +36,4 @@
 
 .vscode
 build
-cmake
+bin
