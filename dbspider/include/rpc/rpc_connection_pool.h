@@ -27,14 +27,29 @@ namespace dbspider::rpc
         void callback(const std::string &name, Params &&...ps)
         {
             static_assert(sizeof...(ps), "without a callback function");
+
+            // 1. 将参数打包为 tuple
             auto tp = std::make_tuple(ps...);
+
+            // 2. 获取参数大小
             constexpr auto size = std::tuple_size<typename std::decay<decltype(tp)>::type>::value;
+
+            // 3. 获取异步回调函数（最后一个参数为回调函数）
             auto cb = std::get<size - 1>(tp);
+
             static_assert(function_traits<decltype(cb)>{}.arity == 1, "callback type not support");
+
+            // 4. 获取返回结果类型 Result<type>
             using res = typename function_traits<decltype(cb)>::template args<0>::type;
+
+            // 5. 获取返回结果的原始类型 type
             using rt = typename res::row_type;
+
             static_assert(std::is_invocable_v<decltype(cb), Result<rt>>, "callback type not support");
+
             RpcConnectionPool::ptr self = shared_from_this();
+
+            // 6. 开启协程执行回调函数
             go[cb = std::move(cb), name = std::move(name), tp = std::move(tp), self, this]
             {
                 auto proxy = [&cb, &name, &tp, this ]<std::size_t... Index>(std::index_sequence<Index...>)

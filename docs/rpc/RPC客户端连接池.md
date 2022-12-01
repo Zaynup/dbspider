@@ -256,7 +256,7 @@ private:
     }
     ```
 
-+ `handlePublish()` 方法 ：从 `m_subHandle` 找到订阅服务对应的回调函数执行 
++ `handlePublish()` 方法 ：从 `m_subHandle` 找到订阅服务对应的回调函数执行
 
     ```C++
     void RpcConnectionPool::handlePublish(Protocol::ptr proto)
@@ -382,6 +382,7 @@ std::vector<std::string> RpcConnectionPool::discover(const std::string &name)
 #### 3.3.3 `call()` 方法
 
 + 三种调用方式
+  + 1. 异步回调模式
 
     ```C++
     // 异步回调模式
@@ -389,6 +390,8 @@ std::vector<std::string> RpcConnectionPool::discover(const std::string &name)
     void callback(const std::string &name, Params &&...ps)
     {
         static_assert(sizeof...(ps), "without a callback function");
+
+        // 1. 将参数打包为 tuple
         auto tp = std::make_tuple(ps...);
         constexpr auto size = std::tuple_size<typename std::decay<decltype(tp)>::type>::value;
         auto cb = std::get<size - 1>(tp);
@@ -407,7 +410,11 @@ std::vector<std::string> RpcConnectionPool::discover(const std::string &name)
             (void)self;
         };
     }
+    ```
 
+    + 2. 半同步调用
+
+    ```C++
     // 半同步调用
     template <typename R, typename... Params>
     Channel<Result<R>> async_call(const std::string &name, Params &&...ps)
@@ -421,7 +428,11 @@ std::vector<std::string> RpcConnectionPool::discover(const std::string &name)
         };
         return chan;
     }
+    ```
 
+    + 3. 同步调用
+
+    ```C++
     // 同步调用
     template <typename R, typename... Params>
     Result<R> call(const std::string &name, Params... ps)
