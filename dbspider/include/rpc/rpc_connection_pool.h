@@ -83,22 +83,25 @@ namespace dbspider::rpc
             // 从连接池里取出服务连接
             auto conn = m_conns.find(name);
             Result<R> result;
+
+            // 在连接池中找到服务名对应连接
             if (conn != m_conns.end())
             {
                 lock.unlock();
                 result = conn->second->template call<R>(name, ps...);
                 if (result.getCode() != RPC_CLOSED)
                 {
+                    // 如果连接未关闭且正常获取结果，直接返回调用结果。
                     return result;
                 }
                 lock.lock();
-                // 移除失效连接
+                // 连接关闭，移除失效连接
                 std::vector<std::string> &addrs = m_serviceCache[name];
                 std::erase(addrs, conn->second->getSocket()->getRemoteAddress()->toString());
-
                 m_conns.erase(name);
             }
 
+            // 若未在连接池中找到对应连接，去缓存中找服务地址
             std::vector<std::string> &addrs = m_serviceCache[name];
 
             // 如果服务地址缓存为空则重新向服务中心请求服务发现
@@ -122,12 +125,13 @@ namespace dbspider::rpc
                 }
             }
 
-            // 选择客户端负载均衡策略，根据路由策略选择服务地址
+            // 选择客户端负载均衡策略
             RouteStrategy<std::string>::ptr strategy =
                 RouteEngine<std::string>::queryStrategy(Strategy::Random);
 
             if (addrs.size())
             {
+                // 根据路由策略选择服务地址
                 const std::string ip = strategy->select(addrs);
                 Address::ptr address = Address::LookupAny(ip);
                 // 选择的服务地址有效
